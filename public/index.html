@@ -203,6 +203,18 @@
 
   .start-row button { flex: 1; }
 
+  .safety-row {
+    padding: 0 14px 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .safety-row button {
+    flex: 1;
+    font-size: 12.5px;
+    padding: 8px 12px;
+  }
+
   .hint {
     margin-top: 10px;
     text-align: center;
@@ -233,6 +245,11 @@
       <button class="btn-accent" id="sendBtn">Send</button>
     </div>
 
+    <div class="safety-row" id="safetyRow" style="display:none;">
+      <button class="btn-outline" id="reportBtn">Report</button>
+      <button class="btn-danger" id="blockBtn">Block &amp; skip</button>
+    </div>
+
     <div class="start-row" id="startRow">
       <button class="btn-accent" id="startBtn">Start chatting</button>
       <button class="btn-outline" id="nextBtn" style="display:none;">Next stranger</button>
@@ -259,6 +276,10 @@
   const startBtn = document.getElementById("startBtn");
   const nextBtn = document.getElementById("nextBtn");
   const stopBtn = document.getElementById("stopBtn");
+
+  const safetyRow = document.getElementById("safetyRow");
+  const reportBtn = document.getElementById("reportBtn");
+  const blockBtn = document.getElementById("blockBtn");
 
   let isChatting = false;
   let typingTimeout = null;
@@ -287,6 +308,7 @@
   function setChattingUI(active) {
     isChatting = active;
     chatControls.style.display = active ? "flex" : "none";
+    safetyRow.style.display = active ? "flex" : "none";
     startBtn.style.display = active ? "none" : "block";
     nextBtn.style.display = active ? "block" : "none";
     stopBtn.style.display = active ? "block" : "none";
@@ -313,6 +335,15 @@
     setStatus("", "Not connected");
     clearMessages();
     messagesEl.innerHTML = '<div class="placeholder">You\'re not talking to anyone yet.<br />Press "Start" below to get matched with a random stranger.</div>';
+  });
+
+  reportBtn.addEventListener("click", () => {
+    const reason = prompt("What's wrong with this stranger's behavior? (optional)");
+    socket.emit("report-user", reason || "");
+  });
+
+  blockBtn.addEventListener("click", () => {
+    socket.emit("block-user");
   });
 
   sendBtn.addEventListener("click", sendMessage);
@@ -359,6 +390,16 @@
     addBubble("Stranger has disconnected.", "system");
     setChattingUI(false);
     setStatus("", "Not connected");
+  });
+
+  socket.on("report-received", () => {
+    addBubble("Report sent. Thanks for flagging this.", "system");
+  });
+
+  socket.on("block-confirmed", () => {
+    addBubble("You blocked this stranger. Looking for someone new…", "system");
+    setStatus("waiting", "Searching…");
+    socket.emit("find-partner");
   });
 </script>
 
