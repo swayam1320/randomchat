@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Driftline — talk to a stranger</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1b1e27;
+    --panel-raised: #21242f;
+    --border: #2a2e3a;
+    --text: #e9eaee;
+    --muted: #8890a0;
+    --accent: #e8a33d;
+    --accent-dim: #4a3a22;
+    --danger: #d16464;
+    --online: #6fbf8b;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .brand h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .brand h1 span {
+    color: var(--accent);
+  }
+
+  .status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .status-dot i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+
+  .status-dot.online i { background: var(--online); }
+  .status-dot.waiting i { background: var(--accent); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 62vh;
+    min-height: 420px;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .messages::-webkit-scrollbar { width: 8px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+  .placeholder {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 280px;
+  }
+
+  .bubble {
+    max-width: 78%;
+    padding: 9px 13px;
+    border-radius: 12px;
+    font-size: 14.5px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  .bubble.me {
+    align-self: flex-end;
+    background: var(--accent-dim);
+    border: 1px solid #5c4826;
+    color: #f4e3c4;
+  }
+
+  .bubble.them {
+    align-self: flex-start;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+  }
+
+  .bubble.system {
+    align-self: center;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    border: none;
+  }
+
+  .typing-row {
+    padding: 0 18px 6px;
+    height: 16px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .controls {
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+    background: var(--panel);
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-size: 14.5px;
+    outline: none;
+  }
+
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  button {
+    border: none;
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:not(:disabled):active { opacity: 0.8; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #201505;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid #5a3232;
+    color: var(--danger);
+  }
+
+  .start-row {
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  .start-row button { flex: 1; }
+
+  .hint {
+    margin-top: 10px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="brand">
+    <h1>Drift<span>line</span></h1>
+    <div class="status-dot" id="statusDot"><i></i><span id="statusText">Not connected</span></div>
+  </div>
+
+  <div class="card">
+    <div class="messages" id="messages">
+      <div class="placeholder">
+        You're not talking to anyone yet.<br />
+        Press "Start" below to get matched with a random stranger.
+      </div>
+    </div>
+    <div class="typing-row" id="typingRow"></div>
+
+    <div class="controls" id="chatControls" style="display:none;">
+      <input type="text" id="messageInput" placeholder="Type a message…" autocomplete="off" />
+      <button class="btn-accent" id="sendBtn">Send</button>
+    </div>
+
+    <div class="start-row" id="startRow">
+      <button class="btn-accent" id="startBtn">Start chatting</button>
+      <button class="btn-outline" id="nextBtn" style="display:none;">Next stranger</button>
+      <button class="btn-danger" id="stopBtn" style="display:none;">Stop</button>
+    </div>
+  </div>
+
+  <p class="hint">Be kind. Nothing you type here is saved once you close the tab.</p>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  const messagesEl = document.getElementById("messages");
+  const typingRow = document.getElementById("typingRow");
+  const statusDot = document.getElementById("statusDot");
+  const statusText = document.getElementById("statusText");
+
+  const chatControls = document.getElementById("chatControls");
+  const messageInput = document.getElementById("messageInput");
+  const sendBtn = document.getElementById("sendBtn");
+
+  const startBtn = document.getElementById("startBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const stopBtn = document.getElementById("stopBtn");
+
+  let isChatting = false;
+  let typingTimeout = null;
+
+  function clearMessages() {
+    messagesEl.innerHTML = "";
+  }
+
+  function addBubble(text, kind) {
+    // Remove the empty-state placeholder the first time something happens
+    const placeholder = messagesEl.querySelector(".placeholder");
+    if (placeholder) placeholder.remove();
+
+    const div = document.createElement("div");
+    div.className = "bubble " + kind;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setStatus(mode, label) {
+    statusDot.className = "status-dot " + mode;
+    statusText.textContent = label;
+  }
+
+  function setChattingUI(active) {
+    isChatting = active;
+    chatControls.style.display = active ? "flex" : "none";
+    startBtn.style.display = active ? "none" : "block";
+    nextBtn.style.display = active ? "block" : "none";
+    stopBtn.style.display = active ? "block" : "none";
+  }
+
+  startBtn.addEventListener("click", () => {
+    clearMessages();
+    addBubble("Looking for someone to talk to…", "system");
+    setStatus("waiting", "Searching…");
+    socket.emit("find-partner");
+  });
+
+  nextBtn.addEventListener("click", () => {
+    socket.emit("leave-chat");
+    clearMessages();
+    addBubble("Looking for someone new…", "system");
+    setStatus("waiting", "Searching…");
+    socket.emit("find-partner");
+  });
+
+  stopBtn.addEventListener("click", () => {
+    socket.emit("leave-chat");
+    setChattingUI(false);
+    setStatus("", "Not connected");
+    clearMessages();
+    messagesEl.innerHTML = '<div class="placeholder">You\'re not talking to anyone yet.<br />Press "Start" below to get matched with a random stranger.</div>';
+  });
+
+  sendBtn.addEventListener("click", sendMessage);
+  messageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+    else {
+      socket.emit("typing", true);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => socket.emit("typing", false), 1000);
+    }
+  });
+
+  function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text || !isChatting) return;
+    addBubble(text, "me");
+    socket.emit("send-message", text);
+    messageInput.value = "";
+  }
+
+  // ---- Events coming from the server ----
+
+  socket.on("waiting", () => {
+    setStatus("waiting", "Searching…");
+  });
+
+  socket.on("chat-start", () => {
+    clearMessages();
+    addBubble("You're now chatting with a stranger. Say hi!", "system");
+    setStatus("online", "Connected");
+    setChattingUI(true);
+    messageInput.focus();
+  });
+
+  socket.on("receive-message", (text) => {
+    addBubble(text, "them");
+  });
+
+  socket.on("partner-typing", (isTyping) => {
+    typingRow.textContent = isTyping ? "Stranger is typing…" : "";
+  });
+
+  socket.on("partner-left", () => {
+    addBubble("Stranger has disconnected.", "system");
+    setChattingUI(false);
+    setStatus("", "Not connected");
+  });
+</script>
+
+</body>
+</html>
